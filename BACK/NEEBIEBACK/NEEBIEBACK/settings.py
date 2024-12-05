@@ -42,8 +42,20 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_extensions',
     'rest_framework.authtoken',
+    'channels',
 
 ]
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
+
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.TokenAuthentication',
@@ -82,6 +94,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "NEEBIEBACK.wsgi.application"
+ASGI_APPLICATION = 'NEEBIEBACK.asgi.application'
 
 
 # Database

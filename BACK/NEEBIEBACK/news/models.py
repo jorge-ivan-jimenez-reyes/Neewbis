@@ -15,7 +15,8 @@ class News(models.Model):
 
     def __str__(self):
         return self.title
-
+def is_recent(self):
+    return self.published_at > timezone.now() - timedelta(days=7)
 # Modelo para las preferencias de los usuarios
 class UserPreferences(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

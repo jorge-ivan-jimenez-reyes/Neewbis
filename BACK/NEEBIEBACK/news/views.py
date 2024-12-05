@@ -1,13 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import News
-from .serializers import NewsSerializer
-from .services import fetch_and_process_news
 from django.contrib.auth.models import User
-from .models import News, UserInteractions
-from .services import recommend_news_content_based
 from rest_framework.permissions import IsAuthenticated
+from django.core.exceptions import ObjectDoesNotExist
+from .models import News, UserInteractions
+from .serializers import NewsSerializer
+from .services import fetch_and_process_news_multiple_categories, recommend_news_content_based
 
 class FetchAndClassifyNewsAPIView(APIView):
     """
@@ -15,7 +14,10 @@ class FetchAndClassifyNewsAPIView(APIView):
     """
     def get(self, request):
         try:
-            fetch_and_process_news(country='us', category='technology')
+            fetch_and_process_news_multiple_categories(
+                country='us',
+                categories=['technology', 'sports', 'business', 'health']
+            )
             return Response({"message": "Noticias procesadas y clasificadas exitosamente"}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -32,8 +34,6 @@ class NewsListAPIView(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
 
 class UserInteractionAPIView(APIView):
@@ -60,12 +60,25 @@ class UserInteractionAPIView(APIView):
                 defaults={'liked': liked}
             )
 
+            # Actualizar las recomendaciones del usuario
+            recommendations = recommend_news_content_based(user)
+
             message = "Interacción creada" if created else "Interacción actualizada"
-            return Response({"message": message, "interaction": {
-                "user": user.username,
-                "news": news.title,
-                "liked": interaction.liked
-            }}, status=status.HTTP_201_CREATED)
+            return Response({
+                "message": message,
+                "interaction": {
+                    "user": user.username,
+                    "news": news.title,
+                    "liked": interaction.liked,
+                },
+                "recommendations": [
+                    {
+                        "id": rec.id,
+                        "title": rec.title,
+                        "summary": rec.summary,
+                    } for rec in recommendations
+                ]
+            }, status=status.HTTP_201_CREATED)
         except User.DoesNotExist:
             return Response({"error": "Usuario no encontrado"}, status=status.HTTP_404_NOT_FOUND)
         except News.DoesNotExist:
@@ -73,24 +86,33 @@ class UserInteractionAPIView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class ContentBasedRecommendationAPIView(APIView):
-    permission_classes = [IsAuthenticated]  # Requiere que el usuario esté autenticado
+    """
+    API View para obtener recomendaciones basadas en contenido.
+    """
+    permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        try:
-            user = request.user  # Esto ahora será el usuario autenticado
-            recommendations = recommend_news_content_based(user)
-            data = [{"id": news.id, "title": news.title, "summary": news.summary} for news in recommendations]
-            return Response({"recommendations": data}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-class RecommendationContentBasedAPIView(APIView):
     def get(self, request):
         try:
             user = request.user
             recommendations = recommend_news_content_based(user)
-            data = [{"id": news.id, "title": news.title, "summary": news.summary} for news in recommendations]
+
+            if not recommendations:
+                return Response({"message": "No hay recomendaciones disponibles."}, status=status.HTTP_200_OK)
+
+            data = [
+                {
+                    "id": news.id,
+                    "title": news.title,
+                    "summary": news.summary,
+                }
+                for news in recommendations
+            ]
+
             return Response({"recommendations": data}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"error": "Usuario no encontrado."}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            print(f"[ERROR] {e}")
+            return Response({"error": "Error interno del servidor."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

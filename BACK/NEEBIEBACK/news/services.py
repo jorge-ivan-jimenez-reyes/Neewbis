@@ -105,17 +105,22 @@ def process_and_save_news(news_data):
             print(f"Noticia ya existente: {news.title}")
 
 
-def fetch_and_process_news(country='us', category='technology'):
+def fetch_and_process_news_multiple_categories(country='us', categories=None):
     """
-    Fetch news from the API and save them to the database.
+    Fetch news from the API for multiple categories and save them to the database.
     """
-    try:
-        news_data = fetch_news_from_api(country=country, category=category)
-        process_and_save_news(news_data)
-        print("Noticias procesadas exitosamente.")
-    except Exception as e:
-        print(f"Error al procesar las noticias: {e}")
+    if categories is None:
+        # Lista de categorías a analizar
+        categories = ['technology', 'business', 'sports', 'health', 'science', 'entertainment']
 
+    for category in categories:
+        try:
+            print(f"Procesando noticias para la categoría: {category}")
+            news_data = fetch_news_from_api(country=country, category=category)
+            process_and_save_news(news_data)
+            print(f"Noticias procesadas exitosamente para la categoría: {category}")
+        except Exception as e:
+            print(f"Error al procesar noticias para la categoría {category}: {e}")
 
 # Recomendaciones basadas en contenido
 def generate_similarity_matrix():
@@ -131,28 +136,41 @@ def generate_similarity_matrix():
     similarity_matrix = cosine_similarity(news_vectors)
 
     return similarity_matrix, news_data
-
 def recommend_news_content_based(user):
-    user_interactions = UserInteractions.objects.filter(user=user, liked=True)
-    user_preferred_news = [interaction.news for interaction in user_interactions]
+    from django.db.models import Q
 
-    if not user_preferred_news:
-        return News.objects.none()  # No hay noticias preferidas, devuelve un queryset vacío
+    # Obtener interacciones del usuario
+    user_interactions = UserInteractions.objects.filter(user=user)
+    liked_news_ids = list(user_interactions.filter(liked=True).values_list('news__id', flat=True))
 
-    user_keywords = []
-    for news in user_preferred_news:
-        user_keywords.extend(news.keywords)
-    user_keywords_text = " ".join(user_keywords)
+    # Obtener noticias no vistas
+    all_news = News.objects.exclude(Q(id__in=liked_news_ids) | Q(processed=False))
 
-    all_news = News.objects.exclude(userinteractions__user=user)  # Excluye noticias ya vistas
-    all_news_texts = [" ".join(news.keywords) for news in all_news]
+    if not all_news.exists():
+        return all_news[:5]  # Devuelve las primeras 5 noticias si no hay datos
 
-    vectorizer = TfidfVectorizer()
-    vectors = vectorizer.fit_transform([user_keywords_text] + all_news_texts)
+    # Preparar textos para TF-IDF
+    liked_texts = [" ".join(news.categories + news.keywords) for news in News.objects.filter(id__in=liked_news_ids)]
+    news_texts = [" ".join(news.categories + news.keywords) for news in all_news]
 
-    similarity_matrix = cosine_similarity(vectors[0:1], vectors[1:]).flatten()
-    recommended_indices = similarity_matrix.argsort()[::-1]  # Orden descendente
+    if not liked_texts:
+        return all_news[:5]  # Devuelve las primeras noticias si no hay interacciones
 
-    # Convertir índices a int y obtener las noticias recomendadas
-    recommended_news = [all_news[int(idx)] for idx in recommended_indices[:60]]
-    return recommended_news
+    try:
+        # Generar vectores TF-IDF
+        vectorizer = TfidfVectorizer()
+        all_vectors = vectorizer.fit_transform(news_texts + liked_texts)
+        liked_vectors = all_vectors[-len(liked_texts):]
+        all_vectors = all_vectors[:-len(liked_texts)]
+
+        # Calcular similitudes
+        similarity_matrix = cosine_similarity(all_vectors, liked_vectors)
+        similarity_scores = similarity_matrix.mean(axis=1)
+
+        # Ordenar noticias por similitud
+        sorted_indices = similarity_scores.argsort()[::-1]
+        recommended_news = [all_news[idx] for idx in sorted_indices[:20]]
+        return recommended_news
+    except Exception as e:
+        print(f"[ERROR] Error en recomendaciones: {e}")
+        return all_news[:5]  # Devuelve noticias base en caso de error
