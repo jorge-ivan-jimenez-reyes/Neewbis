@@ -13,7 +13,7 @@ class APIService {
 
     // Obtener noticias
     static func fetchNews(completion: @escaping ([News]) -> Void) {
-        guard let url = URL(string: "http://192.168.137.244:8002/api/news/") else {
+        guard let url = URL(string: "http://192.168.0.16:8002/api/news/") else {
             print("[ERROR] URL no válida")
             completion([])
             return
@@ -67,7 +67,7 @@ class APIService {
 
     // Obtener recomendaciones
     static func fetchRecommendations(completion: @escaping ([RecommendedNews]) -> Void) {
-        guard let url = URL(string: "http://192.168.137.244:8002/api/recommendations/content-based/") else {
+        guard let url = URL(string: "http://192.168.0.16:8002/api/recommendations/content-based/") else {
             print("[ERROR] URL no válida")
             completion([]) // Devuelve una lista vacía
             return
@@ -112,7 +112,7 @@ class APIService {
 
     // Guardar interacciones
     static func saveInteraction(newsId: Int, liked: Bool) {
-        guard let url = URL(string: "http://192.168.137.244:8002/api/user-interaction/") else { return }
+        guard let url = URL(string: "http://192.168.0.16:8002/api/user-interaction/") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
