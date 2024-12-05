@@ -60,18 +60,18 @@ class APIService {
     static func fetchRecommendations(completion: @escaping ([RecommendedNews]) -> Void) {
         guard let url = URL(string: "http://192.168.137.244:8002/api/recommendations/content-based/") else {
             print("[ERROR] URL no válida")
-            completion([])
+            completion([]) // Devuelve una lista vacía
             return
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
-        request.setValue("Token \(authToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("Token 7476a40a5aee3a0d5a17bd2e29676b6182d4f893", forHTTPHeaderField: "Authorization")
 
         session.dataTask(with: request) { data, response, error in
             if let error = error {
                 print("[ERROR] Error al obtener recomendaciones: \(error.localizedDescription)")
-                completion([])
+                completion([]) // Devuelve una lista vacía
                 return
             }
 
@@ -79,24 +79,24 @@ class APIService {
                 print("[DEBUG] Código de respuesta HTTP: \(httpResponse.statusCode)")
                 if httpResponse.statusCode != 200 {
                     print("[ERROR] Respuesta no exitosa. Código: \(httpResponse.statusCode)")
-                    completion([])
+                    completion([]) // Devuelve una lista vacía
                     return
                 }
             }
 
             guard let data = data else {
                 print("[ERROR] No se recibió data del servidor.")
-                completion([])
+                completion([]) // Devuelve una lista vacía
                 return
             }
 
             do {
-                let recommendations = try JSONDecoder().decode([RecommendedNews].self, from: data)
+                let response = try JSONDecoder().decode(RecommendationsResponse.self, from: data)
                 print("[DEBUG] Recomendaciones decodificadas exitosamente.")
-                completion(recommendations)
+                completion(response.recommendations)
             } catch {
                 print("[ERROR] Error al decodificar recomendaciones: \(error.localizedDescription)")
-                completion([])
+                completion([]) // Devuelve una lista vacía si hay error
             }
         }.resume()
     }
