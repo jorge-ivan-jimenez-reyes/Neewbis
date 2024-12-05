@@ -96,49 +96,57 @@ class APIService {
         }.resume()
     }
     
-
     static func fetchRecommendations(completion: @escaping ([RecommendedNews]) -> Void) {
-            guard let url = URL(string: "http://192.168.137.244:8002/api/recommendations/content-based/") else {
-                print("[ERROR] URL no válida")
-                completion([]) // Devuelve una lista vacía
+        guard let url = URL(string: "http://192.168.137.244:8002/api/recommendations/content-based/") else {
+            print("[ERROR] URL no válida")
+            completion([])
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        // Agregar el token en el encabezado de autorización
+        if let token = UserDefaults.standard.string(forKey: "authToken") {
+            request.setValue("Token \(token)", forHTTPHeaderField: "Authorization")
+        } else {
+            print("[ERROR] Token no encontrado. Inicia sesión primero.")
+            completion([])
+            return
+        }
+
+        session.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("[ERROR] Error al obtener recomendaciones: \(error.localizedDescription)")
+                completion([])
                 return
             }
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-
-            session.dataTask(with: request) { data, response, error in
-                if let error = error {
-                    print("[ERROR] Error al obtener recomendaciones: \(error.localizedDescription)")
-                    completion([]) // Devuelve una lista vacía
+            if let httpResponse = response as? HTTPURLResponse {
+                print("[DEBUG] Código de respuesta HTTP: \(httpResponse.statusCode)")
+                if httpResponse.statusCode != 200 {
+                    print("[ERROR] Respuesta no exitosa. Código: \(httpResponse.statusCode)")
+                    completion([])
                     return
                 }
+            }
 
-                if let httpResponse = response as? HTTPURLResponse {
-                    print("[DEBUG] Código de respuesta HTTP: \(httpResponse.statusCode)")
-                    if httpResponse.statusCode != 200 {
-                        print("[ERROR] Respuesta no exitosa. Código: \(httpResponse.statusCode)")
-                        completion([]) // Devuelve una lista vacía
-                        return
-                    }
-                }
+            guard let data = data else {
+                print("[ERROR] No se recibió data del servidor.")
+                completion([])
+                return
+            }
 
-                guard let data = data else {
-                    print("[ERROR] No se recibió data del servidor.")
-                    completion([]) // Devuelve una lista vacía
-                    return
-                }
-
-                do {
-                    let recommendations = try JSONDecoder().decode([RecommendedNews].self, from: data)
-                    print("[DEBUG] Recomendaciones decodificadas exitosamente.")
-                    completion(recommendations)
-                } catch {
-                    print("[ERROR] Error al decodificar recomendaciones: \(error.localizedDescription)")
-                    completion([]) // Devuelve una lista vacía si hay error
-                }
-            }.resume()
-        }
+            do {
+                let recommendations = try JSONDecoder().decode([RecommendedNews].self, from: data)
+                print("[DEBUG] Recomendaciones decodificadas exitosamente.")
+                completion(recommendations)
+            } catch {
+                print("[ERROR] Error al decodificar recomendaciones: \(error.localizedDescription)")
+                completion([])
+            }
+        }.resume()
+    }
     
     static func saveInteraction(newsId: Int, liked: Bool) {
         guard let url = URL(string: "http://192.168.137.244:8002/api/user-interaction/") else { return }
