@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "news",
     'rest_framework',
     'django_extensions',
+    'rest_framework.authtoken',
 
 ]
 
