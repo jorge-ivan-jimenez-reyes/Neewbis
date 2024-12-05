@@ -3,8 +3,8 @@ import Foundation
 class APIService {
     static let session: URLSession = {
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 30 // Tiempo de espera para la solicitud en segundos
-        config.timeoutIntervalForResource = 60 // Tiempo de espera para la respuesta completa
+        config.timeoutIntervalForRequest = 60 // Tiempo de espera para la solicitud en segundos
+        config.timeoutIntervalForResource = 120 // Tiempo de espera para la respuesta completa
         return URLSession(configuration: config)
     }()
 
