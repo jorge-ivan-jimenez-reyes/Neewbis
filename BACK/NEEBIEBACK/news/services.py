@@ -1,16 +1,19 @@
 import requests
 from datetime import datetime, timedelta
 import openai
-from .models import News
-from django.conf import settings
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 from pytz import utc
+from django.conf import settings
 import json
+from .models import News, UserInteractions
 # Configuración de la API de noticias
-BASE_URL = "https://newsapi.org/v2/top-headlines"  # Asegúrate de que BASE_URL está definido aquí
+BASE_URL = "https://newsapi.org/v2/top-headlines"
 API_KEY = settings.NEWS_API_KEY
 
 # Configuración de OpenAI
 openai.api_key = settings.OPENAI_API_KEY
+
 
 def fetch_news_from_api(country='us', category=None):
     """
@@ -20,11 +23,10 @@ def fetch_news_from_api(country='us', category=None):
         'apiKey': API_KEY,
         'country': country,
         'category': category,
-        'pageSize': 100,  # Limita la cantidad de resultados
-        'from': (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"),  # Últimos 7 días
-
+        'pageSize': 100,
+        'from': (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"),
     }
-    response = requests.get(BASE_URL, params=params)  # BASE_URL está accesible aquí
+    response = requests.get(BASE_URL, params=params)
     if response.status_code == 200:
         return response.json()
     else:
@@ -55,42 +57,36 @@ def classify_news_with_gpt(title, content):
                 {"role": "user", "content": prompt},
             ]
         )
-        # Muestra la respuesta completa para depuración
-        print("Respuesta GPT:", response['choices'][0]['message']['content'])
-
-        # Intenta convertir directamente desde JSON en lugar de usar eval
         result = response['choices'][0]['message']['content'].strip()
-        return json.loads(result)  # Usa json.loads para manejar JSON de forma segura
+        return json.loads(result)
     except Exception as e:
         print(f"Error al clasificar la noticia: {e}")
         return {"category": "Desconocido", "keywords": []}
+
+
 def process_and_save_news(news_data):
     """
     Process, classify, and save news articles into the database.
     """
     for article in news_data.get('articles', []):
         title = article.get('title', 'Título no disponible')
-        content = article.get('content', None)  # Verifica si el contenido está presente
+        content = article.get('content', None)
         summary = article.get('description', 'Sin resumen')
         url = article.get('url', '')
         published_at = article.get('publishedAt', None)
 
-        # Verifica y convierte la fecha publicada
         if published_at:
             try:
                 published_at = datetime.strptime(published_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=utc)
             except ValueError:
                 published_at = None
 
-        # Si no hay contenido, ignora esta noticia
         if not content:
             print(f"Noticia ignorada: {title} (sin contenido)")
             continue
 
-        # Clasifica la noticia con GPT
         classification = classify_news_with_gpt(title, content)
 
-        # Guarda la noticia en la base de datos
         news, created = News.objects.get_or_create(
             title=title,
             defaults={
@@ -107,6 +103,8 @@ def process_and_save_news(news_data):
             print(f"Noticia guardada: {news.title}")
         else:
             print(f"Noticia ya existente: {news.title}")
+
+
 def fetch_and_process_news(country='us', category='technology'):
     """
     Fetch news from the API and save them to the database.
@@ -117,3 +115,44 @@ def fetch_and_process_news(country='us', category='technology'):
         print("Noticias procesadas exitosamente.")
     except Exception as e:
         print(f"Error al procesar las noticias: {e}")
+
+
+# Recomendaciones basadas en contenido
+def generate_similarity_matrix():
+    """
+    Genera una matriz de similitud entre todas las noticias utilizando TF-IDF.
+    """
+    news_data = list(News.objects.all())
+    news_texts = [" ".join(news.categories + news.keywords) for news in news_data]
+
+    vectorizer = TfidfVectorizer()
+    news_vectors = vectorizer.fit_transform(news_texts)
+
+    similarity_matrix = cosine_similarity(news_vectors)
+
+    return similarity_matrix, news_data
+
+def recommend_news_content_based(user):
+    user_interactions = UserInteractions.objects.filter(user=user, liked=True)
+    user_preferred_news = [interaction.news for interaction in user_interactions]
+
+    if not user_preferred_news:
+        return News.objects.none()  # No hay noticias preferidas, devuelve un queryset vacío
+
+    user_keywords = []
+    for news in user_preferred_news:
+        user_keywords.extend(news.keywords)
+    user_keywords_text = " ".join(user_keywords)
+
+    all_news = News.objects.exclude(userinteractions__user=user)  # Excluye noticias ya vistas
+    all_news_texts = [" ".join(news.keywords) for news in all_news]
+
+    vectorizer = TfidfVectorizer()
+    vectors = vectorizer.fit_transform([user_keywords_text] + all_news_texts)
+
+    similarity_matrix = cosine_similarity(vectors[0:1], vectors[1:]).flatten()
+    recommended_indices = similarity_matrix.argsort()[::-1]  # Orden descendente
+
+    # Convertir índices a int y obtener las noticias recomendadas
+    recommended_news = [all_news[int(idx)] for idx in recommended_indices[:5]]
+    return recommended_news
