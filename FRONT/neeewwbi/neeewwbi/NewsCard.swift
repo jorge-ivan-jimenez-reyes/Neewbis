@@ -20,6 +20,9 @@ struct NewsCard: View {
                 .foregroundColor(.gray)
             Spacer()
         }
+        .onAppear {
+            print("Mostrando noticia: \(news.title)")
+        }
         .padding()
         .background(Color.white)
         .cornerRadius(10)
