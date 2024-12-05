@@ -14,9 +14,9 @@ class APIService {
             completion([]) // Devuelve una lista vacía para evitar bloqueos
             return
         }
-
+        
         print("[DEBUG] Intentando obtener noticias desde: \(url.absoluteString)")
-
+        
         session.dataTask(with: url) { data, response, error in
             if let error = error {
                 print("[ERROR] Error al obtener noticias: \(error.localizedDescription)")
@@ -24,7 +24,7 @@ class APIService {
                 completion([]) // Devuelve una lista vacía en caso de error
                 return
             }
-
+            
             if let httpResponse = response as? HTTPURLResponse {
                 print("[DEBUG] Código de respuesta HTTP: \(httpResponse.statusCode)")
                 if httpResponse.statusCode != 200 {
@@ -33,15 +33,15 @@ class APIService {
                     return
                 }
             }
-
+            
             guard let data = data else {
                 print("[ERROR] No se recibió data del servidor.")
                 completion([]) // Devuelve una lista vacía
                 return
             }
-
+            
             print("[DEBUG] Data recibida: \(String(data: data, encoding: .utf8) ?? "No se pudo decodificar la data en texto.")")
-
+            
             do {
                 let news = try JSONDecoder().decode([News].self, from: data)
                 print("[DEBUG] Noticias decodificadas exitosamente: \(news.count) artículos.")
@@ -53,7 +53,52 @@ class APIService {
             }
         }.resume()
     }
+    
 
+    static func fetchRecommendations(completion: @escaping ([RecommendedNews]) -> Void) {
+            guard let url = URL(string: "http://192.168.137.244:8002/api/recommendations/content-based/") else {
+                print("[ERROR] URL no válida")
+                completion([]) // Devuelve una lista vacía
+                return
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "GET"
+            request.setValue("Bearer <your-auth-token>", forHTTPHeaderField: "Authorization")  // Token de autenticación
+
+            session.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("[ERROR] Error al obtener recomendaciones: \(error.localizedDescription)")
+                    completion([]) // Devuelve una lista vacía
+                    return
+                }
+
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("[DEBUG] Código de respuesta HTTP: \(httpResponse.statusCode)")
+                    if httpResponse.statusCode != 200 {
+                        print("[ERROR] Respuesta no exitosa. Código: \(httpResponse.statusCode)")
+                        completion([]) // Devuelve una lista vacía
+                        return
+                    }
+                }
+
+                guard let data = data else {
+                    print("[ERROR] No se recibió data del servidor.")
+                    completion([]) // Devuelve una lista vacía
+                    return
+                }
+
+                do {
+                    let recommendations = try JSONDecoder().decode([RecommendedNews].self, from: data)
+                    print("[DEBUG] Recomendaciones decodificadas exitosamente.")
+                    completion(recommendations)
+                } catch {
+                    print("[ERROR] Error al decodificar recomendaciones: \(error.localizedDescription)")
+                    completion([]) // Devuelve una lista vacía si hay error
+                }
+            }.resume()
+        }
+    
     static func saveInteraction(newsId: Int, liked: Bool) {
         guard let url = URL(string: "http://192.168.137.244:8002/api/user-interaction/") else { return }
         var request = URLRequest(url: url)
