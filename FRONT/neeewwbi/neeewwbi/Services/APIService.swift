@@ -23,37 +23,46 @@ class APIService {
         request.httpMethod = "GET"
         request.setValue("Token \(authToken)", forHTTPHeaderField: "Authorization")
 
-        session.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("[ERROR] Error al obtener noticias: \(error.localizedDescription)")
-                completion([])
-                return
-            }
+        func attemptFetch(retryCount: Int) {
+            session.dataTask(with: request) { data, response, error in
+                if let error = error {
+                    print("[ERROR] Error al obtener noticias: \(error.localizedDescription)")
+                    if retryCount > 0 {
+                        print("[DEBUG] Reintentando... (\(retryCount) intentos restantes)")
+                        attemptFetch(retryCount: retryCount - 1)
+                    } else {
+                        completion([])
+                    }
+                    return
+                }
 
-            if let httpResponse = response as? HTTPURLResponse {
-                print("[DEBUG] Código de respuesta HTTP: \(httpResponse.statusCode)")
-                if httpResponse.statusCode != 200 {
-                    print("[ERROR] Respuesta no exitosa. Código: \(httpResponse.statusCode)")
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("[DEBUG] Código de respuesta HTTP: \(httpResponse.statusCode)")
+                    if httpResponse.statusCode != 200 {
+                        print("[ERROR] Respuesta no exitosa. Código: \(httpResponse.statusCode)")
+                        completion([])
+                        return
+                    }
+                }
+
+                guard let data = data else {
+                    print("[ERROR] No se recibió data del servidor.")
                     completion([])
                     return
                 }
-            }
 
-            guard let data = data else {
-                print("[ERROR] No se recibió data del servidor.")
-                completion([])
-                return
-            }
+                do {
+                    let news = try JSONDecoder().decode([News].self, from: data)
+                    print("[DEBUG] Noticias decodificadas exitosamente: \(news.count) artículos.")
+                    completion(news)
+                } catch {
+                    print("[ERROR] Error al decodificar noticias: \(error.localizedDescription)")
+                    completion([])
+                }
+            }.resume()
+        }
 
-            do {
-                let news = try JSONDecoder().decode([News].self, from: data)
-                print("[DEBUG] Noticias decodificadas exitosamente: \(news.count) artículos.")
-                completion(news)
-            } catch {
-                print("[ERROR] Error al decodificar noticias: \(error.localizedDescription)")
-                completion([])
-            }
-        }.resume()
+        attemptFetch(retryCount: 3)  // Intenta 3 veces antes de fallar
     }
 
     // Obtener recomendaciones
