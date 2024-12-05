@@ -29,9 +29,22 @@
 		86EF567F2D01911300FC0FF5 /* neeewwbiUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = neeewwbiUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		86C350C32D0192BD00EC2B40 /* Exceptions for "neeewwbi" folder in "neeewwbi" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Previews/MockData.swift,
+			);
+			target = 86EF56642D01911100FC0FF5 /* neeewwbi */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		86EF56672D01911100FC0FF5 /* neeewwbi */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				86C350C32D0192BD00EC2B40 /* Exceptions for "neeewwbi" folder in "neeewwbi" target */,
+			);
 			path = neeewwbi;
 			sourceTree = "<group>";
 		};
