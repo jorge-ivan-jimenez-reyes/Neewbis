@@ -13,7 +13,7 @@ struct News: Identifiable, Codable {
     let summary: String
     let content: String
     let published_at: String
-    let url: String
+    let url: String?
     let categories: [String]
     let keywords: [String]
 
