@@ -7,6 +7,8 @@ from .services import fetch_and_process_news
 from django.contrib.auth.models import User
 from .models import News, UserInteractions
 from .services import recommend_news_content_based
+from rest_framework.permissions import IsAuthenticated
+
 class FetchAndClassifyNewsAPIView(APIView):
     """
     API View para obtener noticias, clasificarlas con GPT y guardarlas en la base de datos.
@@ -72,15 +74,12 @@ class UserInteractionAPIView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class ContentBasedRecommendationAPIView(APIView):
+    permission_classes = [IsAuthenticated]  # Requiere que el usuario esté autenticado
+
     def get(self, request):
         try:
-            if not request.user.is_authenticated:
-                return Response({"error": "Usuario no autenticado"}, status=status.HTTP_401_UNAUTHORIZED)
-
-            recommendations = recommend_news_content_based(request.user)
-            if not recommendations:
-                return Response({"message": "No hay recomendaciones disponibles"}, status=status.HTTP_204_NO_CONTENT)
-
+            user = request.user  # Esto ahora será el usuario autenticado
+            recommendations = recommend_news_content_based(user)
             data = [{"id": news.id, "title": news.title, "summary": news.summary} for news in recommendations]
             return Response({"recommendations": data}, status=status.HTTP_200_OK)
         except Exception as e:
