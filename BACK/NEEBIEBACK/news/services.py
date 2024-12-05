@@ -154,5 +154,5 @@ def recommend_news_content_based(user):
     recommended_indices = similarity_matrix.argsort()[::-1]  # Orden descendente
 
     # Convertir índices a int y obtener las noticias recomendadas
-    recommended_news = [all_news[int(idx)] for idx in recommended_indices[:5]]
+    recommended_news = [all_news[int(idx)] for idx in recommended_indices[:60]]
     return recommended_news
