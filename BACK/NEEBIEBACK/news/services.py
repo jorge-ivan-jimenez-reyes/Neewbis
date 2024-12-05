@@ -1,5 +1,5 @@
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import openai
 from .models import News
 from django.conf import settings
@@ -21,6 +21,8 @@ def fetch_news_from_api(country='us', category=None):
         'country': country,
         'category': category,
         'pageSize': 100,  # Limita la cantidad de resultados
+        'from': (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"),  # Últimos 7 días
+
     }
     response = requests.get(BASE_URL, params=params)  # BASE_URL está accesible aquí
     if response.status_code == 200:
