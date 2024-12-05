@@ -7,7 +7,49 @@ class APIService {
         config.timeoutIntervalForResource = 60 // Tiempo de espera para la respuesta completa
         return URLSession(configuration: config)
     }()
-    
+    static func loginUser(username: String, password: String, completion: @escaping (Bool) -> Void) {
+           guard let url = URL(string: "http://192.168.137.244:8002/api-token-auth/") else {
+               print("[ERROR] URL no válida")
+               completion(false)
+               return
+           }
+
+           var request = URLRequest(url: url)
+           request.httpMethod = "POST"
+           request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+           let body: [String: String] = ["username": username, "password": password]
+           request.httpBody = try? JSONEncoder().encode(body)
+
+           session.dataTask(with: request) { data, response, error in
+               if let error = error {
+                   print("[ERROR] Error al iniciar sesión: \(error.localizedDescription)")
+                   completion(false)
+                   return
+               }
+
+               guard let data = data else {
+                   print("[ERROR] No se recibió data del servidor.")
+                   completion(false)
+                   return
+               }
+
+               do {
+                   let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any]
+                   if let token = json?["token"] as? String {
+                       UserDefaults.standard.set(token, forKey: "authToken")  // Almacena el token
+                       print("[INFO] Token guardado exitosamente")
+                       completion(true)
+                   } else {
+                       print("[ERROR] No se recibió token en la respuesta.")
+                       completion(false)
+                   }
+               } catch {
+                   print("[ERROR] Error al decodificar respuesta: \(error.localizedDescription)")
+                   completion(false)
+               }
+           }.resume()
+       }
     static func fetchNews(completion: @escaping ([News]) -> Void) {
         guard let url = URL(string: "http://192.168.137.244:8002/api/news/") else {
             print("[ERROR] URL no válida")
