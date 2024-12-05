@@ -64,7 +64,6 @@ class APIService {
 
             var request = URLRequest(url: url)
             request.httpMethod = "GET"
-            request.setValue("Bearer <your-auth-token>", forHTTPHeaderField: "Authorization")  // Token de autenticación
 
             session.dataTask(with: request) { data, response, error in
                 if let error = error {
