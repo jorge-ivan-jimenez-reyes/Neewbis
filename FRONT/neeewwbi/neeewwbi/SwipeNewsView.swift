@@ -4,8 +4,6 @@ struct SwipeNewsView: View {
     @State private var news: [News] = []
     @State private var currentIndex = 0
     @State private var dragOffset: CGSize = .zero
-    @State private var animateOpacity: Bool = true
-    private let webSocketManager = WebSocketManager()
 
     var body: some View {
         NavigationView {
@@ -45,10 +43,6 @@ struct SwipeNewsView: View {
             .navigationTitle("Explorar Noticias")
             .onAppear {
                 fetchNews()
-                setupWebSocket()
-            }
-            .onDisappear {
-                webSocketManager.disconnect()
             }
         }
     }
@@ -96,16 +90,6 @@ struct SwipeNewsView: View {
         APIService.fetchNews { fetchedNews in
             DispatchQueue.main.async {
                 self.news = fetchedNews
-            }
-        }
-    }
-
-    func setupWebSocket() {
-        webSocketManager.connect()
-        webSocketManager.onMessageReceived = { updatedNews in
-            DispatchQueue.main.async {
-                self.news = updatedNews
-                self.currentIndex = 0 // Reiniciar índice al recibir nuevas noticias
             }
         }
     }
