@@ -173,4 +173,4 @@ def recommend_news_content_based(user):
         return recommended_news
     except Exception as e:
         print(f"[ERROR] Error en recomendaciones: {e}")
-        return all_news[:5]  # Devuelve noticias base en caso de error
+        return all_news[:30]  # Devuelve noticias base en caso de error
