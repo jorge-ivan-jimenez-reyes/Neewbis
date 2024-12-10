@@ -4,7 +4,7 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 30) {
-                Text("Bienvenido a News Explorer")
+                Text("NewSwipe")
                     .font(.largeTitle)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)

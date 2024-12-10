@@ -1,10 +1,3 @@
-//
-//  news.swift
-//  neeewwbi
-//
-//  Created by Jorge Ivan Jimenez Reyes  on 05/12/24.
-//
-
 import Foundation
 
 struct News: Identifiable, Codable {
